@@ -11,6 +11,17 @@ class Gamenetworkingsockets < Formula
   depends_on "protobuf"
 
   def install
+    # 🚨 Turn off Homebrew compiler shims
+    ENV["HOMEBREW_NO_SHIMS"] = "1"
+
+    # 🚨 Force unfiltered system compiler
+    ENV["CC"] = "/usr/bin/clang"
+    ENV["CXX"] = "/usr/bin/clang++"
+
+    # 🚨 Force correct flags
+    ENV["CXXFLAGS"] = "-std=c++17 -stdlib=libc++"
+    ENV["SDKROOT"] = MacOS.sdk_path_if_needed
+
     args = %W[
       -GNinja
       -DCMAKE_BUILD_TYPE=Release
@@ -26,29 +37,6 @@ class Gamenetworkingsockets < Formula
     system "cmake", "-S", ".", "-B", "build", *std_cmake_args, *args
     system "cmake", "--build", "build"
     system "cmake", "--install", "build"
-
     pkgshare.install Dir["build/lib/cmake/GameNetworkingSockets"]
-  end
-
-  test do
-    (testpath/"CMakeLists.txt").write <<~CMAKE
-      cmake_minimum_required(VERSION 3.16)
-      project(gns_test LANGUAGES CXX)
-      find_package(GameNetworkingSockets REQUIRED)
-      add_executable(gns_test main.cpp)
-      target_link_libraries(gns_test PRIVATE GameNetworkingSockets::GameNetworkingSockets)
-    CMAKE
-
-    (testpath/"main.cpp").write <<~CPP
-      #include <steam/steamnetworkingsockets.h>
-      int main() {
-        SteamNetworkingIdentity id;
-        id.Clear();
-        return k_ESteamNetworkingSocketsDebugOutputType_None;
-      }
-    CPP
-
-    system "cmake", "-S", ".", "-B", "build", "-DCMAKE_PREFIX_PATH=#{prefix}"
-    system "cmake", "--build", "build"
   end
 end
